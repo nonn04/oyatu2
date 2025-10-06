@@ -1,0 +1,492 @@
+<!DOCTYPE html> 
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>おやつエネルギー計算</title>
+  <style>
+    body {
+      margin: 0;
+      background: #fffef9;
+      font-family: sans-serif;
+      overflow-x: hidden;
+    }
+    #top-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+      position: relative;
+    }
+    #selected-snacks {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 10px;
+    }
+    .selected-slot {
+      width: 200px;
+      height: 220px;
+      border: 4px solid #8bc34a;
+      border-radius: 12px;
+      background: #eafbe5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4vw;
+      text-align: center;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      user-select: none;
+    }
+    .selected-slot img {
+      width: 100px;
+      height: 100px;
+      object-fit: contain;
+      margin-bottom: 10px;
+      pointer-events: none;
+      user-select: none;
+    }
+    .selected-slot .calories {
+      margin-top: 6px;
+      font-size: 2.4vw;
+      font-weight: bold;
+      color: #e65100;
+      user-select: text;
+    }
+
+    /* 合計エネルギー枠 */
+    #total {
+      margin-top: 6px;
+      background-color: #fff3e0;
+      border: 3px solid #ff9800;
+      border-radius: 14px;
+      padding: 8px 24px;
+      box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+      min-width: 280px;
+      font-weight: bold;
+      text-align: center;
+      color: #e65100;
+      user-select: none;
+      font-size: 1.4vw;
+    }
+    #total .label {
+      font-size: 1.3vw;
+      display: inline-block;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    #total strong {
+      font-size: 3.8vw;
+      vertical-align: middle;
+    }
+
+    /* 合計と一括キャンセルを横並び */
+    #total-and-reset {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      margin-top: 6px;
+    }
+
+    /* 一括キャンセルボタンは小さめ四角 */
+    #reset-all {
+      font-size: 1.4vw;
+      line-height: 1;
+      padding: 0;
+      background-color: #f44336;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* おやつ一覧 横6列 */
+    #snack-list {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 12px;
+      padding: 10px 24px 40px;
+      max-width: 1024px;
+      margin: 0 auto 30px;
+    }
+
+    /* おやつコマンドデザイン */
+    .snack {
+      background: #f9f9f9;
+      border-radius: 8px;
+      padding: 6px 8px;
+      text-align: left;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 1vw;
+      transition: background-color 0.3s, border 0.3s;
+      border: 2px solid transparent;
+      position: relative;
+      min-height: 72px;
+    }
+    .snack.selected {
+      background-color: #f0fbe0;
+      border-color: #aed581;
+    }
+    .snack .top-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+    }
+    .snack img {
+      width: 30px;
+      height: 30px;
+      object-fit: contain;
+      user-select: none;
+      pointer-events: none;
+      flex-shrink: 0;
+    }
+    .snack-name {
+      flex-grow: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* コントロールボタン（＋−） */
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 6px;
+      width: 100%;
+      align-items: center;
+    }
+    .controls button {
+      background-color: #8bc34a;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      width: 28px;
+      height: 28px;
+       display: flex;
+  justify-content: center;
+  align-items: center;
+
+  font-size: 1.2vw;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+    }
+
+    /* 個別キャンセルボタン */
+    .reset-btn {
+      background-color: #f44336 !important;
+  width: 28px !important;
+  height: 28px !important;
+  font-size: 1.2vw !important;
+  border-radius: 4px !important;
+  padding: 0 !important;
+  color: white !important;
+  border: none !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  transition: background-color 0.2s !important;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+    }
+
+    /* サイズ選択ボタン */
+    .size-buttons {
+      display: flex;
+      gap: 4px;
+      margin-top: 6px;
+      justify-content: center;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+    .size-button {
+      background: #4caf50;
+      color: white;
+      font-size: 0.7vw;
+      padding: 1px 6px;
+      border-radius: 6px;
+      cursor: pointer;
+      user-select: none;
+      border: 2px solid transparent;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .size-button.active {
+      background: #ff9800;
+      border-color: #ff5722;
+    }
+
+    /* --- ここからレスポンシブ調整（iPadなど768～1024px） --- */
+    @media (max-width: 1024px) and (min-width: 768px) {
+      /* コントロールのボタン（＋−、キャンセル）を少し小さく */
+      .controls button,
+      .reset-btn {
+        width: 24px !important;
+        height: 24px !important;
+        font-size: 1vw !important;
+      }
+
+      /* 数量表示の文字サイズ */
+      .controls span {
+        font-size: 1vw !important;
+      }
+
+      /* おやつ名のフォントサイズ */
+      .snack-name {
+        font-size: 0.9vw !important;
+      }
+
+      /* サイズ選択ボタン */
+      .size-button {
+        font-size: 0.6vw !important;
+        padding: 1px 4px !important;
+      }
+
+      /* 選択済みおやつの名前サイズ */
+      .selected-slot {
+        font-size: 1.1vw !important;
+      }
+      .selected-slot .calories {
+        font-size: 2vw !important;
+      }
+
+      /* 合計エネルギーのサイズ調整 */
+      #total {
+        font-size: 1.1vw !important;
+      }
+      #total .label {
+        font-size: 1vw !important;
+      }
+      #total strong {
+        font-size: 3vw !important;
+      }
+
+      /* 一括キャンセルボタン */
+      #reset-all {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 1vw !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="top-section">
+    <div id="selected-snacks">
+      <div class="selected-slot" id="slot-1"></div>
+      <div class="selected-slot" id="slot-2"></div>
+      <div class="selected-slot" id="slot-3"></div>
+      <div class="selected-slot" id="slot-4"></div>
+    </div>
+    <div id="total-and-reset">
+      <div id="total">
+        <span class="label">合計エネルギー：</span><strong>0 kcal</strong>
+      </div>
+      <button id="reset-all" title="選択をすべてキャンセル" aria-label="すべてキャンセルボタン">&times;</button>
+    </div>
+  </div>
+
+  <div id="snack-list"></div>
+
+  <script>
+    const snacks = [
+      { id: 1, name: "チョコレート", image: "images/chocolate.png", calories: 30 },
+      { id: 2, name: "クッキー", image: "images/cookie.png", calories: 60 },
+      { id: 3, name: "ソーダアイス", image: "images/soda_ice.png", calories: 70 },
+      { id: 4, name: "バニラアイス", image: "images/vanilla_ice.png", calories: 380, sizes: { '半分': 190, '小さめ': 170 }, sizeImages: { '半分': 'images/vanilla_ice_half.png', '小さめ': 'images/vanilla_ice_small.png' } },
+      { id: 5, name: "あめ", image: "images/candy.png", calories: 10 },
+      { id: 6, name: "ポテトチップス", image: "images/potato_chips.png", calories: 340, sizes: { '半分': 170, '小さめ': 160 }, sizeImages: { '半分': 'images/potato_chips_half.png', '小さめ': 'images/potato_chips_small.png' } },
+      { id: 7, name: "せんべい", image: "images/senbei.png", calories: 40 },
+      { id: 8, name: "グミ", image: "images/gummy.png", calories: 20 },
+      { id: 9, name: "ヨーグルト", image: "images/yogurt.png", calories: 50 },
+      { id: 10, name: "こざかな", image: "images/small_fish.png", calories: 15 },
+      { id: 11, name: "すいか", image: "images/watermelon.png", calories: 40 },
+      { id: 12, name: "バナナ", image: "images/banana.png", calories: 80 },
+      { id: 13, name: "とうもろこし", image: "images/corn.png", calories: 180, sizes: { '半分': 90, '1/4こ': 45 }, sizeImages: { '半分': 'images/corn_half.png', '1/4こ': 'images/corn_quarter.png' } },
+      { id: 14, name: "おちゃ", image: "images/tea.png", calories: 0 },
+      { id: 15, name: "ぎゅうにゅう", image: "images/milk.png", calories: 140 },
+      { id: 16, name: "ジュース", image: "images/juice.png", calories: 220, sizes: { '半分': 110, 'コップ1ぱい': 90 }, sizeImages: { '半分': 'images/juice_half.png', 'コップ1ぱい': 'images/juice_glass.png' } }
+    ];
+
+    const selected = [];
+    const selectedSizes = {};
+
+    function renderSelected() {
+      const slots = [1,2,3,4].map(i => document.getElementById(`slot-${i}`));
+      slots.forEach((slot, i) => {
+        slot.innerHTML = '';
+        if(selected[i]){
+          const snack = selected[i];
+          const size = selectedSizes[snack.id];
+          const img = document.createElement('img');
+          img.src = size && snack.sizeImages?.[size] ? snack.sizeImages[size] : snack.image;
+          const name = document.createElement('div');
+          name.textContent = snack.name;
+          const kcal = document.createElement('div');
+          const cal = size && snack.sizes?.[size] ? snack.sizes[size] : snack.calories;
+          kcal.textContent = `${cal * snack.count} kcal`;
+          kcal.className = 'calories';
+          slot.appendChild(img);
+          slot.appendChild(name);
+          slot.appendChild(kcal);
+        }
+      });
+    }
+
+    function renderSnacks() {
+      const container = document.getElementById('snack-list');
+      container.innerHTML = '';
+      snacks.forEach(snack => {
+        const div = document.createElement('div');
+        div.className = 'snack';
+        if(selected.find(s => s.id === snack.id)) div.classList.add('selected');
+
+        const topRow = document.createElement('div');
+        topRow.className = 'top-row';
+
+        const img = document.createElement('img');
+        img.src = snack.image;
+        topRow.appendChild(img);
+
+        const name = document.createElement('div');
+        name.className = 'snack-name';
+        name.textContent = snack.name;
+        topRow.appendChild(name);
+
+        div.appendChild(topRow);
+
+        const controls = document.createElement('div');
+        controls.className = 'controls';
+
+        const minusBtn = document.createElement('button');
+        minusBtn.textContent = '−';
+        minusBtn.title = "減らす";
+        minusBtn.onclick = () => updateCount(snack.id, -1);
+
+        const countSpan = document.createElement('span');
+        countSpan.id = `count-${snack.id}`;
+        countSpan.textContent = selected.find(s => s.id === snack.id)?.count || 0;
+        countSpan.style.minWidth = '20px';
+        countSpan.style.textAlign = 'center';
+        countSpan.style.fontSize = '1.2vw';
+
+        const plusBtn = document.createElement('button');
+        plusBtn.textContent = '＋';
+        plusBtn.title = "増やす";
+        plusBtn.onclick = () => updateCount(snack.id, 1);
+
+        const resetBtn = document.createElement('button');
+        resetBtn.className = 'reset-btn';
+        resetBtn.title = 'キャンセル';
+        resetBtn.textContent = '×';
+        resetBtn.onclick = () => resetSnack(snack.id);
+
+        controls.appendChild(minusBtn);
+        controls.appendChild(countSpan);
+        controls.appendChild(plusBtn);
+        controls.appendChild(resetBtn);
+
+        div.appendChild(controls);
+
+        if(snack.sizes){
+          const sizeDiv = document.createElement('div');
+          sizeDiv.className = 'size-buttons';
+          for(const label in snack.sizes){
+            const btn = document.createElement('div');
+            btn.className = 'size-button';
+            btn.textContent = label;
+            if(selectedSizes[snack.id] === label) btn.classList.add('active');
+            btn.onclick = () => {
+              selectedSizes[snack.id] = label;
+              renderSnacks();
+              renderSelected();
+              updateTotal();
+            };
+            sizeDiv.appendChild(btn);
+          }
+          div.appendChild(sizeDiv);
+        }
+
+        container.appendChild(div);
+      });
+    }
+
+    function updateCount(id, delta){
+      const snack = snacks.find(s => s.id === id);
+      const existing = selected.find(s => s.id === id);
+      if(delta > 0 && !existing && selected.length >= 4){
+        alert("えらべるのは4つまでだよ。");
+        return;
+      }
+      if(existing){
+        existing.count += delta;
+        if(existing.count <= 0){
+          const idx = selected.findIndex(s => s.id === id);
+          selected.splice(idx, 1);
+          delete selectedSizes[id];
+        }
+      } else {
+        selected.push({...snack, count: 1});
+      }
+      renderSnacks();
+      renderSelected();
+      updateTotal();
+    }
+
+    function resetSnack(id){
+      const idx = selected.findIndex(s => s.id === id);
+      if(idx !== -1){
+        selected.splice(idx, 1);
+        delete selectedSizes[id];
+      }
+      renderSnacks();
+      renderSelected();
+      updateTotal();
+    }
+
+    function resetAll(){
+      selected.length = 0;
+      for(let k in selectedSizes) delete selectedSizes[k];
+      renderSnacks();
+      renderSelected();
+      updateTotal();
+    }
+
+    function updateTotal(){
+      let total = 0;
+      selected.forEach(snack => {
+        const size = selectedSizes[snack.id];
+        const cal = size && snack.sizes ? snack.sizes[size] : snack.calories;
+        total += cal * snack.count;
+      });
+      document.querySelector('#total').innerHTML =
+        `<span class="label">合計エネルギー：</span><strong>${total} kcal</strong>`;
+    }
+
+    document.getElementById('reset-all').addEventListener('click', resetAll);
+
+    renderSnacks();
+    renderSelected();
+    updateTotal();
+  </script>
+
+</body>
+</html>
